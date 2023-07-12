@@ -12,6 +12,7 @@ function App() {
   const [accountBalance, setAccountBalance] = useState("");
   const [toAddress, setToAddress] = useState("");
   const [tokenAmount, setTokenAmount] = useState(0);
+  const [loading, setLoading] = useState(false);
 
   const web3ModalRef = useRef();
 
@@ -81,7 +82,7 @@ function App() {
     setTokenAmount(e.target.value);
   };
 
-  const onSendTokenhandler = () => {
+  const onSendTokenhandler = async () => {
     if (toAddress === "") {
       toast.error("Address is empty");
       return;
@@ -90,6 +91,39 @@ function App() {
     if (parseInt(tokenAmount) <= 0) {
       toast.error("Amount must be greater than 0");
       return;
+    }
+
+    const parsedAmount = ethers.utils.parseEther(tokenAmount.toString());
+
+    try {
+      const signer = await getProviderOrSigner(true);
+      const contract = new Contract(CONTRACT_ADDRESS, ABI, signer);
+      const result = await contract.transfer(toAddress, parsedAmount);
+      setLoading(true);
+      await result.wait();
+      setLoading(false);
+      toast.success(
+        (res) => (
+          <p>
+            Transaction mined Successfully!! Check status
+            <a
+              rel="noreferer"
+              target="_blank"
+              className="ml-2 text-blue-800"
+              href={`https://sepolia.etherscan.io/tx/${result.hash}`}
+            >
+              here
+            </a>
+          </p>
+        ),
+        { duration: 5000 }
+      );
+
+      getAccountBalance(currentAccount);
+      setToAddress("");
+      setTokenAmount(0);
+    } catch (err) {
+      console.log("Error transfering Token:", err);
     }
   };
 
@@ -122,7 +156,7 @@ function App() {
           <div className="font-bold flex items-center justify-center px-2 w-full">
             <div className="w-[600px] h-[200px] border-2 border-lime-900 rounded-lg shadow-md shadow-black p-2">
               <div className="text-slate-800 text-lg text-center">
-                <b>Balance:</b> {accountBalance} KTM
+                <b>Balance:</b> {accountBalance} CTK
               </div>
               <div className="p-2 text-lg flex items-center">
                 Address:
@@ -149,13 +183,15 @@ function App() {
                   onClick={onSendTokenhandler}
                   className="bg-tranparent border-2 border-lime-900 rounded-lg p-1 w-1/2 hover:bg-lime-600 hover:text-white duration-200"
                 >
-                  Send Token
+                  {loading ? "Transferring..." : "Send Token"}
                 </button>
               </div>
             </div>
           </div>
           <div>
-            <h4 className="text-3xl font-bold text-lime-800">"KTM" Token</h4>
+            <h4 className="text-3xl font-bold text-lime-800">
+              "Cryptokenium(CTK)"
+            </h4>
           </div>
         </div>
       )}
